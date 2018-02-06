@@ -79,8 +79,8 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ADDI     rd, rs1, imm
     // ------------------------------------------------------------------------
     function Action addi(GPR rd, GPR rs1, Imm12 imm);
-    	action
-    		trace($format("addi  x%d, x%d, 0x%h", rd, rs1, imm));   
+        action
+            trace($format("addi  x%d, x%d, 0x%h", rd, rs1, imm));   
             Word_S op_A = unpack(gpr.read(rs1));
             Word_S op_B = signExtend(unpack(imm));
             Word_S result = op_A + op_B;
@@ -93,8 +93,8 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // SLTI     rd, rs1, imm
     // ------------------------------------------------------------------------
     function Action slti(GPR rd, GPR rs1, Imm12 imm);
-    	action
-    		trace($format("slti  x%d, x%d, 0x%h", rd, rs1, imm));
+        action
+            trace($format("slti  x%d, x%d, 0x%h", rd, rs1, imm));
             Word_S op_A = unpack(gpr.read(rs1));
             Word_S op_B = signExtend(unpack(imm));
             Word_S result = op_A < op_B ? 1 : 0;
@@ -108,7 +108,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action sltiu(GPR rd, GPR rs1, Imm12 imm);
         action
-     		trace($format("sltiu  x%d, x%d, 0x%h", rd, rs1, imm));
+            trace($format("sltiu  x%d, x%d, 0x%h", rd, rs1, imm));
             Word op_A = gpr.read(rs1);
             Word op_B = zeroExtend(imm);
             Word result = op_A < op_B ? 1 : 0;
@@ -122,7 +122,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action andi(GPR rd, GPR rs1, Imm12 imm);
         action
-        	trace($format("andi  x%d, x%d, 0x%h", rd, rs1, imm));
+            trace($format("andi  x%d, x%d, 0x%h", rd, rs1, imm));
             Word_S op_A = unpack(gpr.read(rs1));
             Word_S op_B = signExtend(unpack(imm));
             Word_S result = op_A & op_B;
@@ -136,7 +136,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action ori(GPR rd, GPR rs1, Imm12 imm);
         action
-        	trace($format("ori  x%d, x%d, 0x%h", rd, rs1, imm));
+            trace($format("ori  x%d, x%d, 0x%h", rd, rs1, imm));
             Word_S op_A = unpack(gpr.read(rs1));
             Word_S op_B = signExtend(unpack(imm));
             Word_S result = op_A | op_B;
@@ -150,7 +150,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action xori(GPR rd, GPR rs1, Imm12 imm);
         action
-    		trace($format("xori  x%d, x%d, 0x%h", rd, rs1, imm));
+            trace($format("xori  x%d, x%d, 0x%h", rd, rs1, imm));
             Word_S op_A = unpack(gpr.read(rs1));
             Word_S op_B = signExtend(unpack(imm));
             Word_S result = op_A ^ op_B;
@@ -164,7 +164,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action slli(GPR rd, GPR rs1, Imm12 imm);
         action
-	    	trace($format("slli  x%d, x%d, 0x%h", rd, rs1, imm));
+            trace($format("slli  x%d, x%d, 0x%h", rd, rs1, imm));
             Word op = gpr.read(rs1);
             Shamt shamt = truncate(imm);
             Word result = op << shamt;
@@ -178,7 +178,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action srli(GPR rd, GPR rs1, Imm12 imm);
         action
-        	trace($format("srli  x%d, x%d, 0x%h", rd, rs1, imm));
+            trace($format("srli  x%d, x%d, 0x%h", rd, rs1, imm));
             Word op = gpr.read(rs1);
             Shamt shamt = truncate(imm);
             Word result = op >> shamt;
@@ -192,7 +192,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action srai(GPR rd, GPR rs1, Imm12 imm);
         action
-	    	trace($format("srai  x%d, x%d, 0x%h", rd, rs1, imm));
+            trace($format("srai  x%d, x%d, 0x%h", rd, rs1, imm));
             Word_S op = unpack(gpr.read(rs1));
             Shamt shamt = truncate(imm);
             Word_S result = op >> shamt;
@@ -206,7 +206,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action lui(GPR rd, Imm20 imm);
         action
-	    	trace($format("lui  x%d, 0x%h", rd, imm));
+            trace($format("lui  x%d, 0x%h", rd, imm));
             Word_S result = signExtend(unpack({ imm, 12'h000 }));
             gpr.write(rd, pack(result));
             finish_normal();
@@ -218,7 +218,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action auipc(GPR rd, Imm20 imm);
         action
-	    	trace($format("auipc  x%d, 0x%h", rd, imm));
+            trace($format("auipc  x%d, 0x%h", rd, imm));
             Word_S op = signExtend(unpack({ imm, 12'h000 }));
             Word_S current_pc = unpack(pc.read());
             Word_S result = op + current_pc;
@@ -238,7 +238,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action add_r(GPR rd, GPR rs1, GPR rs2);
         action
-	    	trace($format("add  x%d, x%d, x%d", rd, rs1, rs2));
+            trace($format("add  x%d, x%d, x%d", rd, rs1, rs2));
             Word op_A = gpr.read(rs1);
             Word op_B = gpr.read(rs2);
             Word result = op_A + op_B;
@@ -252,7 +252,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action slt_r(GPR rd, GPR rs1, GPR rs2);
         action
-	    	trace($format("slt  x%d, x%d, x%d", rd, rs1, rs2));
+            trace($format("slt  x%d, x%d, x%d", rd, rs1, rs2));
             Word_S op_A = unpack(gpr.read(rs1));
             Word_S op_B = unpack(gpr.read(rs2));
             Word result = op_A < op_B ? 1 : 0;
@@ -266,7 +266,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action sltu_r(GPR rd, GPR rs1, GPR rs2);
         action
-	    	trace($format("sltu  x%d, x%d, x%d", rd, rs1, rs2));
+            trace($format("sltu  x%d, x%d, x%d", rd, rs1, rs2));
             Word op_A = gpr.read(rs1);
             Word op_B = gpr.read(rs2);
             Word result = op_A < op_B ? 1 : 0;
@@ -280,7 +280,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action and_r(GPR rd, GPR rs1, GPR rs2);
         action
-	    	trace($format("and  x%d, x%d, x%d", rd, rs1, rs2));
+            trace($format("and  x%d, x%d, x%d", rd, rs1, rs2));
             Word op_A = gpr.read(rs1);
             Word op_B = gpr.read(rs2);
             Word result = op_A & op_B;
@@ -294,7 +294,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action or_r(GPR rd, GPR rs1, GPR rs2);
         action
-	    	trace($format("or  x%d, x%d, x%d", rd, rs1, rs2));
+            trace($format("or  x%d, x%d, x%d", rd, rs1, rs2));
             Word op_A = gpr.read(rs1);
             Word op_B = gpr.read(rs2);
             Word result = op_A | op_B;
@@ -308,7 +308,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action xor_r(GPR rd, GPR rs1, GPR rs2);
         action
-	    	trace($format("xor  x%d, x%d, x%d", rd, rs1, rs2));
+            trace($format("xor  x%d, x%d, x%d", rd, rs1, rs2));
             Word op_A = gpr.read(rs1);
             Word op_B = gpr.read(rs2);
             Word result = op_A ^ op_B;
@@ -322,7 +322,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action sll_r(GPR rd, GPR rs1, GPR rs2);
         action
-	    	trace($format("sll  x%d, x%d, x%d", rd, rs1, rs2));
+            trace($format("sll  x%d, x%d, x%d", rd, rs1, rs2));
             Word op = gpr.read(rs1);
             Shamt shamt = truncate(gpr.read(rs2));
             Word result = op << shamt;
@@ -336,7 +336,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action srl_r(GPR rd, GPR rs1, GPR rs2);
         action
-	    	trace($format("srl  x%d, x%d, x%d", rd, rs1, rs2));
+            trace($format("srl  x%d, x%d, x%d", rd, rs1, rs2));
             Word op = gpr.read(rs1);
             Shamt shamt = truncate(gpr.read(rs2));
             Word result = op >> shamt;
@@ -350,7 +350,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action sub_r(GPR rd, GPR rs1, GPR rs2);
         action
-	    	trace($format("sub  x%d, x%d, x%d", rd, rs1, rs2));
+            trace($format("sub  x%d, x%d, x%d", rd, rs1, rs2));
             Word op_A = gpr.read(rs1);
             Word op_B = gpr.read(rs2);
             Word result = op_A - op_B;
@@ -364,7 +364,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action sra_r(GPR rd, GPR rs1, GPR rs2);
         action
-	    	trace($format("sra  x%d, x%d, x%d", rd, rs1, rs2));
+            trace($format("sra  x%d, x%d, x%d", rd, rs1, rs2));
             Word_S op = unpack(gpr.read(rs1));
             Shamt shamt = truncate(gpr.read(rs2));
             Word_S result = op >> shamt;
@@ -379,19 +379,19 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // Control Transfer Instructions
     // ========================================================================
     
-	// ------------------------------------------------------------------------
+    // ------------------------------------------------------------------------
     // JAL      rd, offset   
     // ------------------------------------------------------------------------
     function Action jal(GPR rd, Imm20 imm);
         action
-	    	trace($format("jal  x%d, 0x%h", rd, imm));
-        	Word_S offset = signExtend(unpack({ imm, 1'b0 }));
+            trace($format("jal  x%d, 0x%h", rd, imm));
+            Word_S offset = signExtend(unpack({ imm, 1'b0 }));
             Word saved_pc = pc.read() + 4;
             Word_S next_pc = unpack(pc.read()) + offset;
             gpr.write(rd, saved_pc);
             jump_to(pack(next_pc));
-        	// Generate a misaligned instruction fetch exception if the target 
-        	// address is not aligned to a four-byte boundary.
+            // Generate a misaligned instruction fetch exception if the target 
+            // address is not aligned to a four-byte boundary.
         endaction
     endfunction
 
@@ -400,16 +400,16 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action jalr(GPR rd, GPR rs1, Imm12 imm);
         action
-	    	trace($format("jalr  x%d, x%d, 0x%h", rd, rs1, imm));
+            trace($format("jalr  x%d, x%d, 0x%h", rd, rs1, imm));
             Word_S base = unpack(gpr.read(rs1));
-        	Word_S offset = signExtend(unpack(imm));
+            Word_S offset = signExtend(unpack(imm));
             Word saved_pc = pc.read() + 4;
-        	Word next_pc = pack(base + offset);
+            Word next_pc = pack(base + offset);
             next_pc = { next_pc[x_len-1:1], 1'b0 };
-        	gpr.write(rd, saved_pc);
+            gpr.write(rd, saved_pc);
             jump_to(next_pc);
-        	// Generate a misaligned instruction fetch exception if the target 
-        	// address is not aligned to a four-byte boundary.
+            // Generate a misaligned instruction fetch exception if the target 
+            // address is not aligned to a four-byte boundary.
         endaction
     endfunction
 
@@ -418,16 +418,16 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action beq(GPR rs1, GPR rs2, Imm12 imm);
         action
-	    	trace($format("beq  x%d, x%d, 0x%h", rs1, rs2, imm));
-        	Word_S offset = signExtend(unpack({ imm, 1'b0 }));
+            trace($format("beq  x%d, x%d, 0x%h", rs1, rs2, imm));
+            Word_S offset = signExtend(unpack({ imm, 1'b0 }));
             Word_S jump_target = unpack(pc.read()) + offset;
             Word op_A = gpr.read(rs1);
             Word op_B = gpr.read(rs2);
 
-        	if (op_A == op_B)
+            if (op_A == op_B)
                 jump_to(pack(jump_target));
-        	else
-        		finish_normal();
+            else
+                finish_normal();
         endaction
     endfunction
 
@@ -436,8 +436,8 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action bne(GPR rs1, GPR rs2, Imm12 imm);
         action
-	    	trace($format("bne  x%d, x%d, 0x%h", rs1, rs2, imm));
-        	Word_S offset = signExtend(unpack({ imm, 1'b0 }));
+            trace($format("bne  x%d, x%d, 0x%h", rs1, rs2, imm));
+            Word_S offset = signExtend(unpack({ imm, 1'b0 }));
             Word_S jump_target = unpack(pc.read()) + offset;
             Word op_A = gpr.read(rs1);
             Word op_B = gpr.read(rs2);
@@ -449,12 +449,12 @@ module mkRISCV_Spec#(Memory_Ifc memory)
         endaction
     endfunction
 
-	// ------------------------------------------------------------------------
+    // ------------------------------------------------------------------------
     // BLT      rs1, rs2, offset   
     // ------------------------------------------------------------------------
     function Action blt(GPR rs1, GPR rs2, Imm12 imm);
         action
-	    	trace($format("blt  x%d, x%d, 0x%h", rs1, rs2, imm));
+            trace($format("blt  x%d, x%d, 0x%h", rs1, rs2, imm));
             Word_S offset = signExtend(unpack({ imm, 1'b0 }));
             Word_S jump_target = unpack(pc.read()) + offset;
             Word_S op_A = unpack(gpr.read(rs1));
@@ -467,13 +467,13 @@ module mkRISCV_Spec#(Memory_Ifc memory)
         endaction
     endfunction
 
-	// ------------------------------------------------------------------------
+    // ------------------------------------------------------------------------
     // BLTU      rs1, rs2, offset   
     // ------------------------------------------------------------------------
     function Action bltu(GPR rs1, GPR rs2, Imm12 imm);
         action
-	    	trace($format("bltu  x%d, x%d, 0x%h", rs1, rs2, imm));
-        	Word_S offset = signExtend(unpack({ imm, 1'b0 }));
+            trace($format("bltu  x%d, x%d, 0x%h", rs1, rs2, imm));
+            Word_S offset = signExtend(unpack({ imm, 1'b0 }));
             Word_S jump_target = unpack(pc.read()) + offset;
             Word op_A = gpr.read(rs1);
             Word op_B = gpr.read(rs2);
@@ -490,8 +490,8 @@ module mkRISCV_Spec#(Memory_Ifc memory)
     // ------------------------------------------------------------------------
     function Action bge(GPR rs1, GPR rs2, Imm12 imm);
         action
-	    	trace($format("bge  x%d, x%d, 0x%h", rs1, rs2, imm));
-        	Word_S offset = signExtend(unpack({ imm, 1'b0 }));
+            trace($format("bge  x%d, x%d, 0x%h", rs1, rs2, imm));
+            Word_S offset = signExtend(unpack({ imm, 1'b0 }));
             Word_S jump_target = unpack(pc.read()) + offset;
             Word_S op_A = unpack(gpr.read(rs1));
             Word_S op_B = unpack(gpr.read(rs2));
@@ -503,13 +503,13 @@ module mkRISCV_Spec#(Memory_Ifc memory)
         endaction
     endfunction
 
-	// ------------------------------------------------------------------------
+    // ------------------------------------------------------------------------
     // BGEU      rs1, rs2, offset   
     // ------------------------------------------------------------------------
     function Action bgeu(GPR rs1, GPR rs2, Imm12 imm);
         action
-	    	trace($format("bgeu  x%d, x%d, 0x%h", rs1, rs2, imm));
-        	Word_S offset = signExtend(unpack({ imm, 1'b0 }));
+            trace($format("bgeu  x%d, x%d, 0x%h", rs1, rs2, imm));
+            Word_S offset = signExtend(unpack({ imm, 1'b0 }));
             Word_S jump_target = unpack(pc.read()) + offset;
             Word op_A = gpr.read(rs1);
             Word op_B = gpr.read(rs2);
@@ -784,17 +784,17 @@ module mkRISCV_Spec#(Memory_Ifc memory)
 
 
     method Action set_pc(Word data);
-    	pc.write(data);
+        pc.write(data);
     endmethod
 
 
     method Word read_pc();
-    	return pc.read();
+        return pc.read();
     endmethod
 
 
     method Action run_instr(Word instr);
-    	decode(instr);
+        decode(instr);
     endmethod
     */
 

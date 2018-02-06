@@ -28,15 +28,14 @@ endinterface
 
 module mkGPR(GPR_Ifc);
 
-    // GPR register file
+    // Instantiate GPR register file
     RegFile#(GPR, Word) gpr <- mkRegFileWCF(1, fromInteger(x_num-1));
 
     // Write to GPR
     method Action write(GPR r, Word data);
+        trace($format("Write: x%d:=0x%h", r, data));
         if (r != x0)
             gpr.upd(r, data);
-
-        trace($format("Write: x%d:=0x%h", r, data));
     endmethod
 
     // Read GPR
@@ -45,7 +44,6 @@ module mkGPR(GPR_Ifc);
     endmethod
 
 endmodule
-
 
 
 // ----------------------------------------------------------------------------
