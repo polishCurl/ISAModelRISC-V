@@ -33,7 +33,7 @@ module mkGPR(GPR_Ifc);
 
     // Write to GPR
     method Action write(GPR r, Word data);
-        trace($format("Write: x%d:=0x%h", r, data));
+        trace($format("x%1d := 0x%h", r, data));
         if (r != x0)
             gpr.upd(r, data);
     endmethod
@@ -62,7 +62,7 @@ module mkPC(PC_Ifc);
 
     // Write to PC
     method Action write(Word data);
-        trace($format("Write: pc:=0x%h", data));
+        trace($format("pc := 0x%h", data));
         pc <= data;
     endmethod
 

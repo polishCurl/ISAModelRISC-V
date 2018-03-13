@@ -4,21 +4,29 @@ import ClientServer::*;
 
 
 // ----------------------------------------------------------------------------
-// RISC-V Specification FSM states
+// Exception numbers
 // ----------------------------------------------------------------------------
 typedef enum {
-    FETCH, 
-    EXECUTE,
-    DMEM_RESPONSE,
-    IDLE
-} RISCV_State deriving (Eq, Bits, FShow);
+    EXC_INSTR_ADDR_MISALIGNED           = 0,
+    EXC_INSTR_ACCESS_FAULT              = 1, 
+    EXC_ILLEGAL_INSTR                   = 2,
+    EXC_BREAKPOINT                      = 3,
+    EXC_LOAD_ADDR_MISALIGNED            = 4,
+    EXC_LOAD_ACCESS_FAULT               = 5
+} Exception deriving (Eq, Bits, FShow);
 
+
+
+// ============================================================================
+// Instruction decoder definitions
+// ============================================================================
 
 // ----------------------------------------------------------------------------
 // Data types
 // ----------------------------------------------------------------------------
 typedef 32  XLEN;                       // GPR register width
 typedef 32  XNUM;                       // Number of GPRs
+typedef 32  ADDRLEN;                    // Address length
 typedef 20  LIMMLEN;                    // Large immediate width    
 typedef 12  SIMMLEN;                    // Small immediate width
 typedef 7   OPLEN;                      // Opcode width
@@ -28,26 +36,31 @@ typedef 3   F3LEN;                      // Func3 instruction field width
 typedef TAdd#(F7LEN,F3LEN)  F10LEN;     // Total instruction function width
 typedef TLog#(XNUM)         XADRLEN;    // Number of register address bits
 typedef TLog#(XLEN)         SHIFTLEN;   // Number of shift amount bits
+typedef TDiv#(ADDRLEN,8)    BYTEENLEN;  // Number of byte-enable bits in a word
+typedef TLog#(BYTEENLEN)    BYTESELLEN; // Number of byte-select bits
 
-Integer x_len       = valueOf(XLEN);
-Integer x_num       = valueOf(XNUM);
-Integer x_adr_len   = valueOf(XADRLEN);
-Integer shift_len   = valueOf(SHIFTLEN);
-Integer op_len      = valueOf(OPLEN);
+Integer x_len           = valueOf(XLEN);
+Integer adr_len         = valueOf(ADDRLEN);
+Integer x_num           = valueOf(XNUM);
+Integer x_adr_len       = valueOf(XADRLEN);
+Integer shift_len       = valueOf(SHIFTLEN);
+Integer op_len          = valueOf(OPLEN);
+Integer byte_en_len     = valueOf(BYTEENLEN);
+Integer byte_sel_len    = valueOf(BYTESELLEN);
+
 
 typedef Bit#(XLEN)      Word;           // Word
-typedef Int#(XLEN)      Word_S;         // Signed word
+typedef Int#(XLEN)      WordS;          // Signed word
+typedef Bit#(ADDRLEN)   Addr;           // Word
 typedef Bit#(SHIFTLEN)  Shamt;          // Shift amount
 typedef Bit#(XADRLEN)   GPR;            // GPR address
 
-typedef Bit#(SIMMLEN)   Imm12;          // 12-bit immediate
-typedef Bit#(LIMMLEN)   Imm20;          // 20-bit immediate
+typedef Bit#(SIMMLEN)       Imm12;      // 12-bit immediate
+typedef Bit#(LIMMLEN)       Imm20;      // 20-bit immediate
+typedef Bit#(BYTEENLEN)     ByteEn;     // Byte-enable 
+typedef Bit#(BYTESELLEN)    ByteSel;    // Byte-select 
 
 
-
-// ============================================================================
-// INSTRUCTION DECODER DEFINITIONS
-// ============================================================================
 
 // ----------------------------------------------------------------------------
 // Common instruction fields
@@ -186,7 +199,7 @@ Func3 f3_SW         = 3'b010;
 // Per-type instruction decoders
 // ----------------------------------------------------------------------------
 // R-Type
-function RType decode_r_type(Word instr);
+function RType decodeRType(Word instr);
     return RType {
         func7       : instr[31:25],
         rs2         : instr[24:20],
@@ -198,7 +211,7 @@ function RType decode_r_type(Word instr);
 endfunction
 
 // I-Type
-function IType decode_i_type(Word instr);
+function IType decodeIType(Word instr);
     return IType {
         imm11_0     : instr[31:20],
         rs1         : instr[19:15],
@@ -209,7 +222,7 @@ function IType decode_i_type(Word instr);
 endfunction
 
 // S-Type
-function SType decode_s_type(Word instr);
+function SType decodeSType(Word instr);
     return SType {
         imm11_5     : instr[31:25],
         rs2         : instr[24:20],
@@ -221,7 +234,7 @@ function SType decode_s_type(Word instr);
 endfunction
 
 // B-Type
-function BType decode_b_type(Word instr);
+function BType decodeBType(Word instr);
     return BType {
         imm12       : instr[31],
         imm10_5     : instr[30:25],
@@ -235,7 +248,7 @@ function BType decode_b_type(Word instr);
 endfunction
 
 // U-Type
-function UType decode_u_type(Word instr);
+function UType decodeUType(Word instr);
     return UType {
         imm31_12    : instr[31:12],
         rd          : instr[11:7],      
@@ -244,7 +257,7 @@ function UType decode_u_type(Word instr);
 endfunction
 
 // J-Type
-function JType decode_j_type(Word instr);
+function JType decodeJType(Word instr);
     return JType {
         imm20       : instr[31],
         imm10_1     : instr[30:21],
@@ -260,49 +273,63 @@ endfunction
 // ============================================================================
 // MEMORY INTERFACE DEFINITONS
 // ============================================================================
-// Types of data memory requests
+// Read/Write access type
 typedef enum { 
-    READ, 
-    WRITE 
+    DMEM_READ, 
+    DMEM_WRITE 
 } DMem_Op deriving (Eq, Bits, FShow);
 
-// Allowed data sizes for memory access
+// Data sizes for memory access
 typedef enum {
-    BITS_8,
-    BITS_16,
-    BITS_32,
-    BITS_64    // Even in RV32, to allow for Double (floating point)
+    DMEM_BYTE,
+    DMEM_HALFWORD,
+    DMEM_WORD
 } DMem_Size deriving (Eq, Bits, FShow);
 
 // Data memory request type
 typedef struct {
+    Addr        addr;
     DMem_Op     mem_op;
     DMem_Size   size;
-    Word        addr;
     Word        write_data;     // Only valid if mem_op == WRITE
-} DMem_Req;
+} DMem_Req deriving (Eq, Bits);
+
+// Data/Instruction memory response type
+typedef union tagged {
+    Exception   Mem_Resp_Exception;
+    Word        Mem_Resp_Ok;
+} Mem_Resp deriving (FShow);
+
 
 
 // ----------------------------------------------------------------------------
 // Memory interface
 // ----------------------------------------------------------------------------
 interface Memory_Ifc;
-    interface Server#(Word, Word) imem;
-    //interface Server#(DMem_Req, Word) dmem;   // TODO
+    interface Server#(Addr, Mem_Resp) imem;             // Data memory
+    interface Server#(DMem_Req, Mem_Resp) dmem;         // Instruction memory
 endinterface
 
   
 
 // ============================================================================
-// FOR DEBUGGING
+// NON-ARCHITECTURAL DEFINITONS
 // ============================================================================
+
+// RISC-V ISA Model FSM states
+typedef enum {
+    STATE_FETCH, 
+    STATE_EXECUTE,
+    STATE_STORE_RESPONSE,
+    STATE_LOAD_RESPONSE,
+    STATE_IDLE
+} RISCV_State deriving (Eq, Bits, FShow);
 
 // Show output traces
 Bool trace_enabled = True;
 
 // Display debug message
 function Action trace(Fmt out) = trace_enabled ? $display(out) : noAction;
-
 
 
 endpackage
