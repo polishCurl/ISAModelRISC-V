@@ -2,6 +2,8 @@ package Definitions;
 
 import ClientServer::*;
 
+`include "Config.bsv"
+
 
 // ----------------------------------------------------------------------------
 // Exception numbers
@@ -33,13 +35,14 @@ typedef 7   OPLEN;                      // Opcode width
 typedef 7   F7LEN;                      // Func7 instruction field width
 typedef 3   F3LEN;                      // Func3 instruction field width
 
-typedef TAdd#(F7LEN,F3LEN)  F10LEN;     // Total instruction function width
+typedef TMul#(XLEN,2)       XLEN2;      // Double GPR register width
 typedef TLog#(XNUM)         XADRLEN;    // Number of register address bits
 typedef TLog#(XLEN)         SHIFTLEN;   // Number of shift amount bits
 typedef TDiv#(ADDRLEN,8)    BYTEENLEN;  // Number of byte-enable bits in a word
 typedef TLog#(BYTEENLEN)    BYTESELLEN; // Number of byte-select bits
 
-Integer x_len           = valueOf(XLEN);
+Integer xlen            = valueOf(XLEN);
+Integer xlen_2          = valueOf(XLEN2);
 Integer adr_len         = valueOf(ADDRLEN);
 Integer x_num           = valueOf(XNUM);
 Integer x_adr_len       = valueOf(XADRLEN);
@@ -48,9 +51,10 @@ Integer op_len          = valueOf(OPLEN);
 Integer byte_en_len     = valueOf(BYTEENLEN);
 Integer byte_sel_len    = valueOf(BYTESELLEN);
 
-
 typedef Bit#(XLEN)      Word;           // Word
 typedef Int#(XLEN)      WordS;          // Signed word
+typedef Bit#(XLEN2)     DWord;          // DoubleWord
+typedef Int#(XLEN2)     DWordS;         // Signed doubleword
 typedef Bit#(ADDRLEN)   Addr;           // Word
 typedef Bit#(SHIFTLEN)  Shamt;          // Shift amount
 typedef Bit#(XADRLEN)   GPR;            // GPR address
@@ -68,7 +72,6 @@ typedef Bit#(BYTESELLEN)    ByteSel;    // Byte-select
 typedef Bit#(OPLEN)     Opcode;             // Opcode 
 typedef Bit#(F7LEN)     Func7;              
 typedef Bit#(F3LEN)     Func3;  
-typedef Bit#(F10LEN)    Func10;             // Func7 and Func3 concatenated
 
 
 // ----------------------------------------------------------------------------
@@ -151,16 +154,20 @@ Opcode op_STORE     = 7'b010_0011;
 // Instruction function codes
 // ----------------------------------------------------------------------------
 // Register-Register
-Func10 f10_ADD      = 10'b00_0000_0000;
-Func10 f10_SUB      = 10'b01_0000_0000;
-Func10 f10_SLL      = 10'b00_0000_0001;
-Func10 f10_SLT      = 10'b00_0000_0010;
-Func10 f10_SLTU     = 10'b00_0000_0011;
-Func10 f10_XOR      = 10'b00_0000_0100;
-Func10 f10_SRL      = 10'b00_0000_0101;
-Func10 f10_SRA      = 10'b01_0000_0101;
-Func10 f10_OR       = 10'b00_0000_0110;
-Func10 f10_AND      = 10'b00_0000_0111;
+Func3 f3_ADD            = 3'b000;
+Func3 f3_SUB            = 3'b000;
+Func3 f3_SLL            = 3'b001;
+Func3 f3_SLT            = 3'b010;
+Func3 f3_SLTU           = 3'b011;
+Func3 f3_XOR            = 3'b100;
+Func3 f3_SRL            = 3'b101;
+Func3 f3_SRA            = 3'b101;
+Func3 f3_OR             = 3'b110;
+Func3 f3_AND            = 3'b111;
+
+Func7 f7_SUB_SRA        = 7'b0100000; 
+Func7 f7_REG_OTHER      = 7'b0000000;  
+
 
 // Register-Immediate
 Func3 f3_ADDI       = 3'b000;
@@ -194,6 +201,17 @@ Func3 f3_SB         = 3'b000;
 Func3 f3_SH         = 3'b001;
 Func3 f3_SW         = 3'b010;
 
+// Multiplies, divisions and remainders (RV32M)
+Func3 f3_MUL        = 3'b000;
+Func3 f3_MULH       = 3'b001;
+Func3 f3_MULHSU     = 3'b010;
+Func3 f3_MULHU      = 3'b011;
+Func3 f3_DIV        = 3'b100;
+Func3 f3_DIVU       = 3'b101;
+Func3 f3_REM        = 3'b110;
+Func3 f3_REMU       = 3'b111;
+
+Func7 f7_MULDIV     = 7'b000_0001;
 
 // ----------------------------------------------------------------------------
 // Per-type instruction decoders
@@ -325,8 +343,12 @@ typedef enum {
     STATE_IDLE
 } RISCV_State deriving (Eq, Bits, FShow);
 
-// Show output traces
-Bool trace_enabled = True;
+// Show (or don't) output traces
+`ifdef TRACE_EXECUTION
+    Bool trace_enabled = True;
+`else
+    Bool trace_enabled = False;
+`endif
 
 // Display debug message
 function Action trace(Fmt out) = trace_enabled ? $display(out) : noAction;
