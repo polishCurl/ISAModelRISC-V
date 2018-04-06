@@ -1,3 +1,41 @@
+/*-
+ * Copyright (c) 2018 Krzysztof Piotr Koch
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
+
+/*-
+ * Common RISC-V definitions used in the remaining BSV source files.
+ *
+ * These include:
+ *  - exception numbers
+ *  - custom data types
+ *  - instruction types
+ *  - memory interface
+ *  - FSM states
+ */
+
 package Definitions;
 
 import ClientServer::*;
@@ -5,73 +43,80 @@ import ClientServer::*;
 `include "Config.bsv"
 
 
-// ----------------------------------------------------------------------------
-// Exception numbers
-// ----------------------------------------------------------------------------
-typedef enum {
-    EXC_INSTR_ADDR_MISALIGNED           = 0,
-    EXC_INSTR_ACCESS_FAULT              = 1, 
-    EXC_ILLEGAL_INSTR                   = 2,
-    EXC_BREAKPOINT                      = 3,
-    EXC_LOAD_ADDR_MISALIGNED            = 4,
-    EXC_LOAD_ACCESS_FAULT               = 5
-} Exception deriving (Eq, Bits, FShow);
-
-
 
 // ============================================================================
-// Instruction decoder definitions
+// ISA-related definitions
 // ============================================================================
 
 // ----------------------------------------------------------------------------
 // Data types
 // ----------------------------------------------------------------------------
-typedef 32  XLEN;                       // GPR register width
+`ifdef RV64                             // GPR register width and supported 
+    typedef 64  XLEN;                   // address space
+`else
+    typedef 32  XLEN;                   
+`endif        
+
 typedef 32  XNUM;                       // Number of GPRs
-typedef 32  ADDRLEN;                    // Address length
 typedef 20  LIMMLEN;                    // Large immediate width    
 typedef 12  SIMMLEN;                    // Small immediate width
 typedef 7   OPLEN;                      // Opcode width
 typedef 7   F7LEN;                      // Func7 instruction field width
 typedef 3   F3LEN;                      // Func3 instruction field width
+typedef 8   BYTELEN;   
+typedef 32  INSTRLEN;                             
 
-typedef TMul#(XLEN,2)       XLEN2;      // Double GPR register width
-typedef TLog#(XNUM)         XADRLEN;    // Number of register address bits
-typedef TLog#(XLEN)         SHIFTLEN;   // Number of shift amount bits
-typedef TDiv#(ADDRLEN,8)    BYTEENLEN;  // Number of byte-enable bits in a word
-typedef TLog#(BYTEENLEN)    BYTESELLEN; // Number of byte-select bits
+typedef TDiv#(XLEN,2)           XLENH;          // Half GPR register width
+typedef TMul#(XLEN,2)           XLEND;          // Double data bus width
+typedef TLog#(XNUM)             XADRLEN;        // Number of register address bits
+typedef TLog#(XLEN)             SHIFTLEN;       // Number of shift amount bits for a data word
+typedef TSub#(SHIFTLEN,1)       SHIFTLENH;      // Number of shift amount bits for a data halfword
+typedef TDiv#(XLEN,8)           BYTEENLEN;      // Number of bytes in a word
+typedef TLog#(BYTEENLEN)        BYTESELLEN;     // Number of byte-select bits for a data word
+typedef TSub#(XLEN,BYTESELLEN)  WORDADRLEN;   // Number of byte-select bits for a data word
+
 
 Integer xlen            = valueOf(XLEN);
-Integer xlen_2          = valueOf(XLEN2);
-Integer adr_len         = valueOf(ADDRLEN);
+Integer xlen_2          = valueOf(XLEND);
+Integer xlen_half       = valueOf(XLENH);
+Integer adr_len         = valueOf(XLEN);
+Integer instr_len       = valueOf(INSTRLEN);
 Integer x_num           = valueOf(XNUM);
 Integer x_adr_len       = valueOf(XADRLEN);
 Integer shift_len       = valueOf(SHIFTLEN);
 Integer op_len          = valueOf(OPLEN);
-Integer byte_en_len     = valueOf(BYTEENLEN);
+Integer bytes_in_word   = valueOf(BYTEENLEN);
 Integer byte_sel_len    = valueOf(BYTESELLEN);
 
-typedef Bit#(XLEN)      Word;           // Word
-typedef Int#(XLEN)      WordS;          // Signed word
-typedef Bit#(XLEN2)     DWord;          // DoubleWord
-typedef Int#(XLEN2)     DWordS;         // Signed doubleword
-typedef Bit#(ADDRLEN)   Addr;           // Word
-typedef Bit#(SHIFTLEN)  Shamt;          // Shift amount
-typedef Bit#(XADRLEN)   GPR;            // GPR address
+// XLEN-dependent data types
+typedef Bit#(XLEN)          Word;           // Data word
+typedef Int#(XLEN)          WordS;          // Signed data word
+typedef Bit#(XLENH)         HWord;          // Data halfword
+typedef Int#(XLENH)         HWordS;         // Signed data halfword
+typedef Bit#(XLEND)         DWord;          // Data doubleword
+typedef Int#(XLEND)         DWordS;         // Signed data doubleword
+typedef Bit#(XLEN)          Addr;           // Address
+typedef Bit#(WORDADRLEN)    WordAddr;       // Word address (excluding byte addr)
 
-typedef Bit#(SIMMLEN)       Imm12;      // 12-bit immediate
-typedef Bit#(LIMMLEN)       Imm20;      // 20-bit immediate
-typedef Bit#(BYTEENLEN)     ByteEn;     // Byte-enable 
-typedef Bit#(BYTESELLEN)    ByteSel;    // Byte-select 
+// Fixed data types
+typedef Bit#(BYTELEN)       Byte;           // Byte
+typedef Int#(BYTELEN)       ByteS;          // Signed byte
+typedef Bit#(INSTRLEN)      Instr;          // Instruction
 
+// Instruction fields
+typedef Bit#(SHIFTLEN)      Shamt;          // Shift amount for Data
+typedef Bit#(SHIFTLENH)     ShamtH;         // Shift amount (halfword)
+typedef Bit#(XADRLEN)       GPR;            // GPR address
+typedef Bit#(OPLEN)         Opcode;         // Opcode 
+typedef Bit#(F7LEN)         Func7;              
+typedef Bit#(F3LEN)         Func3;  
 
+// Immediate value types and byte enables/select
+typedef Bit#(SIMMLEN)       Imm12;          // 12-bit immediate
+typedef Bit#(LIMMLEN)       Imm20;          // 20-bit immediate
+typedef Bit#(BYTEENLEN)     ByteEn;         // Byte-enable 
+typedef Bit#(BYTESELLEN)    ByteSel;        // Byte-select 
 
-// ----------------------------------------------------------------------------
-// Common instruction fields
-// ----------------------------------------------------------------------------
-typedef Bit#(OPLEN)     Opcode;             // Opcode 
-typedef Bit#(F7LEN)     Func7;              
-typedef Bit#(F3LEN)     Func3;  
 
 
 // ----------------------------------------------------------------------------
@@ -89,7 +134,7 @@ typedef struct {
 
 // I-Type
 typedef struct {
-    Bit#(12)    imm11_0;
+    Imm12       imm11_0;
     GPR         rs1;
     Func3       func3;
     GPR         rd;
@@ -120,7 +165,7 @@ typedef struct {
 
 // U-Type
 typedef struct {
-    Bit#(20)    imm31_12;
+    Imm20       imm31_12;
     GPR         rd;
     Opcode      op;
 } UType deriving (Bits);
@@ -213,11 +258,12 @@ Func3 f3_REMU       = 3'b111;
 
 Func7 f7_MULDIV     = 7'b000_0001;
 
+
 // ----------------------------------------------------------------------------
-// Per-type instruction decoders
+// Per instruction-type decoders
 // ----------------------------------------------------------------------------
 // R-Type
-function RType decodeRType(Word instr);
+function RType decodeRType(Instr instr);
     return RType {
         func7       : instr[31:25],
         rs2         : instr[24:20],
@@ -229,7 +275,7 @@ function RType decodeRType(Word instr);
 endfunction
 
 // I-Type
-function IType decodeIType(Word instr);
+function IType decodeIType(Instr instr);
     return IType {
         imm11_0     : instr[31:20],
         rs1         : instr[19:15],
@@ -240,7 +286,7 @@ function IType decodeIType(Word instr);
 endfunction
 
 // S-Type
-function SType decodeSType(Word instr);
+function SType decodeSType(Instr instr);
     return SType {
         imm11_5     : instr[31:25],
         rs2         : instr[24:20],
@@ -252,7 +298,7 @@ function SType decodeSType(Word instr);
 endfunction
 
 // B-Type
-function BType decodeBType(Word instr);
+function BType decodeBType(Instr instr);
     return BType {
         imm12       : instr[31],
         imm10_5     : instr[30:25],
@@ -266,7 +312,7 @@ function BType decodeBType(Word instr);
 endfunction
 
 // U-Type
-function UType decodeUType(Word instr);
+function UType decodeUType(Instr instr);
     return UType {
         imm31_12    : instr[31:12],
         rd          : instr[11:7],      
@@ -275,7 +321,7 @@ function UType decodeUType(Word instr);
 endfunction
 
 // J-Type
-function JType decodeJType(Word instr);
+function JType decodeJType(Instr instr);
     return JType {
         imm20       : instr[31],
         imm10_1     : instr[30:21],
@@ -287,11 +333,31 @@ function JType decodeJType(Word instr);
 endfunction
 
 
+// ----------------------------------------------------------------------------
+// Exception numbers (not part of User-Level ISA)
+// ----------------------------------------------------------------------------
+typedef enum {
+    EXC_INSTR_ADDR_MISALIGNED           = 0,
+    EXC_INSTR_ACCESS_FAULT              = 1, 
+    EXC_ILLEGAL_INSTR                   = 2,
+    EXC_BREAKPOINT                      = 3,
+    EXC_DATA_ADDR_MISALIGNED            = 4,
+    EXC_DATA_ACCESS_FAULT               = 5,
+    EXC_ECALL                           = 8
+} Exception deriving (Eq, Bits, FShow);
+
+
 
 // ============================================================================
 // MEMORY INTERFACE DEFINITONS
 // ============================================================================
-// Read/Write access type
+// Instruction memory response type
+typedef union tagged {
+    Exception   Mem_Resp_Exception;
+    Instr       Mem_Resp_Ok;
+} IMem_Resp deriving (Eq, Bits);
+
+// Data memory access type (read/write)
 typedef enum { 
     DMEM_READ, 
     DMEM_WRITE 
@@ -299,9 +365,10 @@ typedef enum {
 
 // Data sizes for memory access
 typedef enum {
-    DMEM_BYTE,
-    DMEM_HALFWORD,
-    DMEM_WORD
+    DMEM_BYTE       = 0,
+    DMEM_HALFWORD   = 1,
+    DMEM_WORD       = 2,
+    DMEM_DOUBLEWORD = 3
 } DMem_Size deriving (Eq, Bits, FShow);
 
 // Data memory request type
@@ -312,11 +379,11 @@ typedef struct {
     Word        write_data;     // Only valid if mem_op == WRITE
 } DMem_Req deriving (Eq, Bits);
 
-// Data/Instruction memory response type
+// Data memory response type
 typedef union tagged {
     Exception   Mem_Resp_Exception;
     Word        Mem_Resp_Ok;
-} Mem_Resp deriving (FShow);
+} DMem_Resp deriving (Eq, Bits);
 
 
 
@@ -324,8 +391,8 @@ typedef union tagged {
 // Memory interface
 // ----------------------------------------------------------------------------
 interface Memory_Ifc;
-    interface Server#(Addr, Mem_Resp) imem;             // Data memory
-    interface Server#(DMem_Req, Mem_Resp) dmem;         // Instruction memory
+    interface Server#(Addr, IMem_Resp) imem;            // Data memory
+    interface Server#(DMem_Req, DMem_Resp) dmem;        // Instruction memory
 endinterface
 
   
@@ -333,7 +400,6 @@ endinterface
 // ============================================================================
 // NON-ARCHITECTURAL DEFINITONS
 // ============================================================================
-
 // RISC-V ISA Model FSM states
 typedef enum {
     STATE_FETCH, 
@@ -349,6 +415,12 @@ typedef enum {
 `else
     Bool trace_enabled = False;
 `endif
+
+// Exception cause, either an instruction (32-bit) or a data word (32-bit or 64-bit)
+typedef union tagged {
+    Instr   Fault_Instr;
+    Word    Fault_Val;
+} ExcCause deriving (FShow);
 
 // Display debug message
 function Action trace(Fmt out) = trace_enabled ? $display(out) : noAction;
