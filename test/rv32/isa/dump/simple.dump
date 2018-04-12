@@ -1,0 +1,20 @@
+
+rv32ui-uo-simple:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+00000000 <on_pass-0x4>:
+   0:	00c0006f          	j	c <_start>
+
+00000004 <on_pass>:
+   4:	0000006f          	j	4 <on_pass>
+
+00000008 <on_fail>:
+   8:	0000006f          	j	8 <on_fail>
+
+0000000c <_start>:
+   c:	00100093          	li	ra,1
+  10:	00000073          	ecall
+  14:	ff1ff06f          	j	4 <on_pass>
+  18:	0000006f          	j	18 <_start+0xc>

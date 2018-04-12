@@ -1,0 +1,49 @@
+
+rv32ui-uo-auipc:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+00000000 <on_pass-0x4>:
+   0:	00c0006f          	j	c <_start>
+
+00000004 <on_pass>:
+   4:	0000006f          	j	4 <on_pass>
+
+00000008 <on_fail>:
+   8:	0000006f          	j	8 <on_fail>
+
+0000000c <_start>:
+   c:	00000013          	nop
+  10:	00002517          	auipc	a0,0x2
+  14:	71c50513          	addi	a0,a0,1820 # 272c <_end+0x172c>
+  18:	004005ef          	jal	a1,1c <_start+0x10>
+  1c:	40b50533          	sub	a0,a0,a1
+  20:	00002eb7          	lui	t4,0x2
+  24:	710e8e93          	addi	t4,t4,1808 # 2710 <_end+0x1710>
+  28:	00200193          	li	gp,2
+  2c:	03d51463          	bne	a0,t4,54 <fail>
+
+00000030 <test_3>:
+  30:	ffffe517          	auipc	a0,0xffffe
+  34:	8fc50513          	addi	a0,a0,-1796 # ffffd92c <_end+0xffffc92c>
+  38:	004005ef          	jal	a1,3c <test_3+0xc>
+  3c:	40b50533          	sub	a0,a0,a1
+  40:	ffffeeb7          	lui	t4,0xffffe
+  44:	8f0e8e93          	addi	t4,t4,-1808 # ffffd8f0 <_end+0xffffc8f0>
+  48:	00300193          	li	gp,3
+  4c:	01d51463          	bne	a0,t4,54 <fail>
+  50:	00301863          	bne	zero,gp,60 <pass>
+
+00000054 <fail>:
+  54:	00000093          	li	ra,0
+  58:	00100073          	ebreak
+  5c:	fadff06f          	j	8 <on_fail>
+
+00000060 <pass>:
+  60:	00100093          	li	ra,1
+  64:	00000073          	ecall
+  68:	f9dff06f          	j	4 <on_pass>
+  6c:	0000006f          	j	6c <pass+0xc>
+  70:	0000                	unimp
+  72:	0000                	unimp
