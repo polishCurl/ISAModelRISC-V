@@ -1,0 +1,28 @@
+13ef8B37		// LUI x22, 0x13ef8			
+BA9B0B13		// ADDI x22, x22, 0xba9
+00100093		// ADDI x1, x0, 0x1
+FFF00413		// ADDI x8, x0, 0xFFF
+000B1FF3		// CSRRW x31, x22, 0x000
+000B1FF3		// CSRRW x31, x22, 0x000
+001B1073		// CSRRW x0, x22, 0x001				
+0010BFF3		// CSRRC x31, x1, 0x001
+00103FF3		// CSRRC x31, x0, 0x001
+00043FF3		// CSRRC x31, x8, 0x000
+C0203FF3		// CSRRC x31, x0, instret				// read a read only
+00042FF3		// CSRRS x31, x8, 0x000
+00102FF3		// CSRRS x31, x0, 0x001
+001BDAF3		// CSRRWI x21, 0x17, 0x001
+00015073		// CSRRWI x0, 0x2, 0x000
+0007E373 		// CSRRSI x6, 0xf, 0x000
+00006373 		// CSRRSI x6, 0x0, 0x000
+c0006373 		// CSRRSI x6, 0x0, cycle
+
+0007F373		// CSRRCI x6, 0xf, 0x000
+00007373 		// CSRRCI x6, 0x0, 0x000
+c0207373 		// CSRRCI x6, 0x0, instret
+
+
+c8206373 		// CSRRSI x6, 0x0, cycle
+C020F373		// CSRRCI x6, 0x1, instret 			// write to read-only
+C81093F3		// CSRRW x7, x1, timeh				// write to read-only
+AAA093F3 		// CSRRW x7, x1, wrong_csr			// illegal address

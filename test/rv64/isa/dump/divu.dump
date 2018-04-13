@@ -1,0 +1,109 @@
+
+rv64um-uo-divu:     file format elf64-littleriscv
+
+
+Disassembly of section .text:
+
+0000000000000000 <on_pass-0x4>:
+   0:	00c0006f          	j	c <_start>
+
+0000000000000004 <on_pass>:
+   4:	0000006f          	j	4 <on_pass>
+
+0000000000000008 <on_fail>:
+   8:	0000006f          	j	8 <on_fail>
+
+000000000000000c <_start>:
+   c:	01400093          	li	ra,20
+  10:	00600113          	li	sp,6
+  14:	0220df33          	divu	t5,ra,sp
+  18:	00300e93          	li	t4,3
+  1c:	00200193          	li	gp,2
+  20:	0fdf1a63          	bne	t5,t4,114 <fail>
+
+0000000000000024 <test_3>:
+  24:	fec00093          	li	ra,-20
+  28:	00600113          	li	sp,6
+  2c:	0220df33          	divu	t5,ra,sp
+  30:	02aabeb7          	lui	t4,0x2aab
+  34:	aabe8e9b          	addiw	t4,t4,-1365
+  38:	00ce9e93          	slli	t4,t4,0xc
+  3c:	aabe8e93          	addi	t4,t4,-1365 # 2aaaaab <_end+0x2aa9aab>
+  40:	00ce9e93          	slli	t4,t4,0xc
+  44:	aabe8e93          	addi	t4,t4,-1365
+  48:	00ce9e93          	slli	t4,t4,0xc
+  4c:	aa7e8e93          	addi	t4,t4,-1369
+  50:	00300193          	li	gp,3
+  54:	0ddf1063          	bne	t5,t4,114 <fail>
+
+0000000000000058 <test_4>:
+  58:	01400093          	li	ra,20
+  5c:	ffa00113          	li	sp,-6
+  60:	0220df33          	divu	t5,ra,sp
+  64:	00000e93          	li	t4,0
+  68:	00400193          	li	gp,4
+  6c:	0bdf1463          	bne	t5,t4,114 <fail>
+
+0000000000000070 <test_5>:
+  70:	fec00093          	li	ra,-20
+  74:	ffa00113          	li	sp,-6
+  78:	0220df33          	divu	t5,ra,sp
+  7c:	00000e93          	li	t4,0
+  80:	00500193          	li	gp,5
+  84:	09df1863          	bne	t5,t4,114 <fail>
+
+0000000000000088 <test_6>:
+  88:	fff0009b          	addiw	ra,zero,-1
+  8c:	03f09093          	slli	ra,ra,0x3f
+  90:	00100113          	li	sp,1
+  94:	0220df33          	divu	t5,ra,sp
+  98:	fff00e9b          	addiw	t4,zero,-1
+  9c:	03fe9e93          	slli	t4,t4,0x3f
+  a0:	00600193          	li	gp,6
+  a4:	07df1863          	bne	t5,t4,114 <fail>
+
+00000000000000a8 <test_7>:
+  a8:	fff0009b          	addiw	ra,zero,-1
+  ac:	03f09093          	slli	ra,ra,0x3f
+  b0:	fff00113          	li	sp,-1
+  b4:	0220df33          	divu	t5,ra,sp
+  b8:	00000e93          	li	t4,0
+  bc:	00700193          	li	gp,7
+  c0:	05df1a63          	bne	t5,t4,114 <fail>
+
+00000000000000c4 <test_8>:
+  c4:	fff0009b          	addiw	ra,zero,-1
+  c8:	03f09093          	slli	ra,ra,0x3f
+  cc:	00000113          	li	sp,0
+  d0:	0220df33          	divu	t5,ra,sp
+  d4:	fff00e93          	li	t4,-1
+  d8:	00800193          	li	gp,8
+  dc:	03df1c63          	bne	t5,t4,114 <fail>
+
+00000000000000e0 <test_9>:
+  e0:	00100093          	li	ra,1
+  e4:	00000113          	li	sp,0
+  e8:	0220df33          	divu	t5,ra,sp
+  ec:	fff00e93          	li	t4,-1
+  f0:	00900193          	li	gp,9
+  f4:	03df1063          	bne	t5,t4,114 <fail>
+
+00000000000000f8 <test_10>:
+  f8:	00000093          	li	ra,0
+  fc:	00000113          	li	sp,0
+ 100:	0220df33          	divu	t5,ra,sp
+ 104:	fff00e93          	li	t4,-1
+ 108:	00a00193          	li	gp,10
+ 10c:	01df1463          	bne	t5,t4,114 <fail>
+ 110:	00301863          	bne	zero,gp,120 <pass>
+
+0000000000000114 <fail>:
+ 114:	00000093          	li	ra,0
+ 118:	00100073          	ebreak
+ 11c:	eedff06f          	j	8 <on_fail>
+
+0000000000000120 <pass>:
+ 120:	00100093          	li	ra,1
+ 124:	00000073          	ecall
+ 128:	eddff06f          	j	4 <on_pass>
+ 12c:	0000006f          	j	12c <pass+0xc>
