@@ -343,7 +343,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)     // Memory interface implementation
         else
             return tagged Invalid;
     endmethod
-
+`endif
 
     // Allow an external timer to increment the 'cycle' counter
     method Action incrTimeCounter();
@@ -354,7 +354,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)     // Memory interface implementation
     method Action incrCycleCounter();
         csr.cycleIncr();
     endmethod
-`endif
+
 
 endmodule
 

@@ -46,25 +46,25 @@
 // ----------------------------------------------------------------------------
 // ISA extensions
 // ----------------------------------------------------------------------------
-`define RVxxM                       // Integer Multiplication and Division 
+//`define RVxxM                       // Integer Multiplication and Division 
 
 
 // ----------------------------------------------------------------------------
 // Provide external visibility to RISC-V model state and control over the 
 // operation of the synthesized spec
 // ----------------------------------------------------------------------------
-`define DEBUG_ACCESS                // Allow debug access
+//`define DEBUG_ACCESS                // Allow debug access
 
 
 // ----------------------------------------------------------------------------
 // Input files with memory contents
 // ----------------------------------------------------------------------------
 // Filename with memory contents
-`define MEM_FILE "sltiu.hex"
+`define MEM_FILE "jal.hex"
 
 // Path to the instruction memory file
-//`define IMEM_PATH "../test/rv32/isa/imem/" + `MEM_FILE
-`define IMEM_PATH "../csr.hex"
+`define IMEM_PATH "../test/rv32/isa/imem/" + `MEM_FILE
+//`define IMEM_PATH "../csr.hex"
 
 // Path to the single BRAM data memory file  
 `define DMEM_PATH "../test/rv32/isa/dmem/" + `MEM_FILE  
@@ -85,7 +85,7 @@
 // Type of data memory used (choose one)
 // ----------------------------------------------------------------------------
 //`define DMEM_MULTIBANKED            // Use multibanked memory with one-cycle latency
-`define DMEM_SINGLE_BRAM          // Use a single-BRAM implementation with variable
+`define DMEM_SINGLE_BRAM          	// Use a single-BRAM implementation with variable
                                     // latency
 
 // ----------------------------------------------------------------------------
