@@ -71,14 +71,14 @@ endinterface
 // ============================================================================
 // RISC-V Spec top-level module
 // ============================================================================
-module mkRISCV_Spec#(Memory_Ifc memory)     // Memory interface implementation
-                    (RISCV_Ifc);            // as a parameter to the module
+module mkRISCV_Spec#(IMem_Ifc imem,
+                     DMem_Ifc dmem)     
+                    (RISCV_Ifc);   
 
     // Architectural state
     GPR_Ifc gpr     <- mkGPR();         // General Purpose Register file 
     PC_Ifc pc       <- mkPC();          // Program Counter  
     CSR_Ifc csr     <- mkCSR();         // Control and Status Registers            
-
 
     // Non-architectural state
     Reg#(RISCV_State) state     <- mkReg(STATE_IDLE);   // FSM state
@@ -129,7 +129,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)     // Memory interface implementation
         action
             trace($format("MEMORY READ:  addr = 0x%h, size = ", addr, fshow(size)));
 
-            memory.dmem.request.put(DMemReq {
+            dmem.request.put(DMemReq {
                 addr:       addr,
                 mem_op:     READ,
                 size:       size,
@@ -150,7 +150,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)     // Memory interface implementation
             trace($format("MEMORY WRITE:  addr = 0x%h, data = 0x%h, size = ",
                 addr, data, fshow(size)));
 
-            memory.dmem.request.put(DMemReq {
+            dmem.request.put(DMemReq {
                 addr:       addr,
                 mem_op:     WRITE,
                 size:       size,
@@ -213,7 +213,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)     // Memory interface implementation
         end
         else begin
             trace($format("\nFETCH: addr = 0x%h", pc.read()));
-            memory.imem.request.put(pc.read());
+            imem.request.put(pc.read());
             state <= STATE_EXECUTE;
         end
     endrule
@@ -224,7 +224,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)     // Memory interface implementation
     // ------------------------------------------------------------------------   
     rule decodeAndExecute(state == STATE_EXECUTE);
 
-        IMemResp response <- memory.imem.response.get();
+        IMemResp response <- imem.response.get();
         case (response) matches
 
             // Invalid instruction memory access
@@ -246,7 +246,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)     // Memory interface implementation
     // ------------------------------------------------------------------------ 
     rule loadWait (state == STATE_LOAD_RESPONSE);
 
-        DMemResp response <- memory.dmem.response.get();
+        DMemResp response <- dmem.response.get();
         case (response) matches
 
             // Invalid data memory access
@@ -275,7 +275,7 @@ module mkRISCV_Spec#(Memory_Ifc memory)     // Memory interface implementation
     // ------------------------------------------------------------------------ 
     rule storeWait (state == STATE_STORE_RESPONSE);
 
-        DMemResp response <- memory.dmem.response.get();
+        DMemResp response <- dmem.response.get();
         case (response) matches
 
             // Invalid data memory access

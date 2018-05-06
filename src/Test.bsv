@@ -47,15 +47,17 @@ typedef enum {START, TEST} Test_State deriving (Eq, Bits);
 // ============================================================================
 module mkTest(Empty);
 
+    IMem_Ifc instr_memory <- mkIMem();
+
     // Instantiate memory
 `ifdef DMEM_MULTIBANKED
-    Memory_Ifc mem  <- mkMemoryMultibanked(); 
+    DMem_Ifc data_memory  <- mkDMemMultibanked(); 
 `elsif DMEM_SINGLE_BRAM
-    Memory_Ifc mem  <- mkMemory(); 
+    DMem_Ifc data_memory  <- mkDMemSimple(); 
 `endif  
 
     // Instantiate the RISC-V specification
-    RISCV_Ifc riscv <- mkRISCV_Spec(mem);
+    RISCV_Ifc riscv <- mkRISCV_Spec(instr_memory, data_memory);
 
     // State used for testing   
     Reg#(Test_State) test_state <- mkReg(START);

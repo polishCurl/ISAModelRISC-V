@@ -94,11 +94,9 @@ typedef union tagged {
     Word        Mem_Resp_Ok;
 } DMemResp deriving (Eq, Bits);
 
-// Memory interface
-interface Memory_Ifc;
-    interface Server#(Addr, IMemResp) imem;            // Instruction memory
-    interface Server#(DMemReq, DMemResp) dmem;        // Data memory
-endinterface
+// Memory interface 
+typedef Server#(Addr, IMemResp) IMem_Ifc;       // Instruction memory
+typedef Server#(DMemReq, DMemResp) DMem_Ifc;    // Data memory
 
 
 // ----------------------------------------------------------------------------

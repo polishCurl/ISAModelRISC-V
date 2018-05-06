@@ -55,13 +55,10 @@ import Definitions::*;
 
 
 // ============================================================================
-// Memory implementation with variable data memory latency
+// Instruction memory
 // ============================================================================
-module mkMemory(Memory_Ifc);
+module mkIMem(IMem_Ifc);
 
-    // ------------------------------------------------------------------------
-    // Instruction memory controller
-    // ------------------------------------------------------------------------
     // Configure and instantiate instruction BRAM
     BRAM_Configure ibram_cfg            = defaultValue;
     String imem_file                    = `IMEM_PATH;
@@ -72,10 +69,47 @@ module mkMemory(Memory_Ifc);
     // Flag indicating if the request being served is valid
     Reg#(Bool) is_imem_req_valid <- mkRegU();
     
+    interface Put request;
+        method Action put(Addr addr);
 
-    // ------------------------------------------------------------------------
-    // Data memory controller
-    // ------------------------------------------------------------------------
+            // Check if the instruction address is aligned and within memory
+            if (addr[1:0] != 0 || addr >= `IMEM_SIZE)
+                is_imem_req_valid <= False;
+            else begin
+                ibram.portA.request.put(BRAMRequest {
+                    write :             False,
+                    responseOnWrite :   False,
+                    address :           truncate(addr >> byte_sel_instr),
+                    datain :            ?
+                });
+                is_imem_req_valid <= True;
+            end
+        endmethod
+    endinterface
+
+
+    interface Get response;
+        method ActionValue#(IMemResp) get();
+            if (is_imem_req_valid) begin
+                Instr resp <- ibram.portA.response.get();
+                return tagged Mem_Resp_Ok resp;
+            end
+            else
+                return tagged Mem_Resp_Exception EXC_INSTR_ACCESS_FAULT;
+
+        endmethod
+    endinterface
+endmodule
+
+
+
+
+
+// ============================================================================
+// Data memory (variable latency)
+// ============================================================================
+module mkDMemSimple(DMem_Ifc);
+
     // Configure and instantiate data BRAM. 
     BRAM_Configure dbram_cfg            = defaultValue;
     String dmem_file                    = `DMEM_PATH;
@@ -99,9 +133,8 @@ module mkMemory(Memory_Ifc);
     Reg#(Bit#(TAdd#(BYTESWORD,1))) byte_index <- mkRegU;
 
 
-
     // ------------------------------------------------------------------------
-    // Data memory controller FSM
+    // FSM
     // ------------------------------------------------------------------------
     // A data memory request is being served
     rule dmemRequestProcess (busy && byte_index < (1 << pack(current_req.size)));
@@ -141,108 +174,47 @@ module mkMemory(Memory_Ifc);
 
 
     // ------------------------------------------------------------------------
-    // Instruction memory interface implementation
+    // Interface implementation
     // ------------------------------------------------------------------------
-    interface Server imem;
+    // Split the incoming data memory request into one or more BRAM requests
+    // processed sequentially
+    interface Put request;
+        method Action put(DMemReq req) if (!busy);
 
-        interface Put request;
-            method Action put(Addr addr);
+            // Convert input data into a vector of bytes
+            Vector#(BYTESWORD, Byte) data_vec = unpack(pack(req.write_data));
 
-                // Check if the instruction address is aligned and within memory
-                if (addr[1:0] != 0 || addr >= `IMEM_SIZE)
-                    is_imem_req_valid <= False;
-                else begin
-                    ibram.portA.request.put(BRAMRequest {
-                        write :             False,
-                        responseOnWrite :   False,
-                        address :           truncate(addr >> byte_sel_instr),
-                        datain :            ?
-                    });
-                    is_imem_req_valid <= True;
-                end
-            endmethod
-        endinterface
+            // Check if the byte address is valid and send the first data 
+            // BRAM request
+            if (req.addr >= `DMEM_SIZE)
+                dmem_resp_fifo.enq(tagged Mem_Resp_Exception EXC_DATA_ACCESS_FAULT);
+            else
+                dbram.portA.request.put(
+                        BRAMRequest {
+                            write:              req.mem_op == WRITE,
+                            responseOnWrite:    True,
+                            address:            truncate(req.addr),
+                            datain:             data_vec[0]
+                        });
 
-        interface Get response;
-            method ActionValue#(IMemResp) get();
-
-                if (is_imem_req_valid) begin
-                    Instr resp <- ibram.portA.response.get();
-                    return tagged Mem_Resp_Ok resp;
-                end
-                else
-                    return tagged Mem_Resp_Exception EXC_INSTR_ACCESS_FAULT;
-
-            endmethod
-        endinterface
-
+            // Initialise the memory controller state
+            current_req     <= req;
+            busy            <= True;
+            byte_index      <= 1;
+        endmethod
     endinterface
 
-
-    // ------------------------------------------------------------------------
-    // Data memory interface implementation
-    // ------------------------------------------------------------------------
-    interface Server dmem;
-
-        // Split the incoming data memory request into one or more BRAM requests
-        // processed sequentially
-        interface Put request;
-            method Action put(DMemReq req) if (!busy);
-
-                // Convert input data into a vector of bytes
-                Vector#(BYTESWORD, Byte) data_vec = unpack(pack(req.write_data));
-
-                // Check if the byte address is valid and send the first data 
-                // BRAM request
-                if (req.addr >= `DMEM_SIZE)
-                    dmem_resp_fifo.enq(tagged Mem_Resp_Exception EXC_DATA_ACCESS_FAULT);
-                else
-                    dbram.portA.request.put(
-                            BRAMRequest {
-                                write:              req.mem_op == WRITE,
-                                responseOnWrite:    True,
-                                address:            truncate(req.addr),
-                                datain:             data_vec[0]
-                            });
-
-                // Initialise the memory controller state
-                current_req     <= req;
-                busy            <= True;
-                byte_index      <= 1;
-            endmethod
-        endinterface
-
-
-        interface response = toGet(dmem_resp_fifo);
-    endinterface
-
+    interface response = toGet(dmem_resp_fifo);
 endmodule
 
 
 
 
 // ============================================================================
-// Multi-banked memory implementation
+// Multi-banked data memory
 // ============================================================================
-module mkMemoryMultibanked(Memory_Ifc);
+module mkDMemMultibanked(DMem_Ifc);
 
-    // ------------------------------------------------------------------------
-    // Instruction memory controller
-    // ------------------------------------------------------------------------
-    // Configure and instantiate instruction BRAM
-    BRAM_Configure ibram_cfg            = defaultValue;
-    String imem_file                    = `IMEM_PATH;
-    ibram_cfg.loadFormat                = tagged Hex imem_file;
-    ibram_cfg.memorySize                = ibram_size;
-    BRAM1Port#(IBRAMAddr, Instr) ibram  <- mkBRAM1Server(ibram_cfg);
-
-    // Flag indicating if the request being served is valid
-    Reg#(Bool) is_imem_req_valid <- mkRegU();
-    
-
-    // ------------------------------------------------------------------------
-    // Data memory controller
-    // ------------------------------------------------------------------------
     // Configure and instantiate one BRAM module per byte in a word 
     BRAM_Configure dbram_cfg        = defaultValue;
     dbram_cfg.memorySize            = dbram_size;
@@ -253,7 +225,6 @@ module mkMemoryMultibanked(Memory_Ifc);
         dbram_cfg.loadFormat    = tagged Hex dmem_file;
         dbram[i]                <- mkBRAM1Server(dbram_cfg);
     end
-    
 
     // Last data memory request made
     Reg#(DMemReq) last_dmem_req <- mkRegU();
@@ -264,128 +235,85 @@ module mkMemoryMultibanked(Memory_Ifc);
 
 
     // ------------------------------------------------------------------------
-    // Instruction memory interface implementation
+    // Data memory interface implementation
     // ------------------------------------------------------------------------
-    interface Server imem;
 
-        interface Put request;
-            method Action put(Addr addr);
+`ifdef RV32
+    // Convert the data memory request size (e.g. HALFWORD) into byte enable 
+    //signals
+    function Vector#(BYTESWORD, Bool) size2ByteEnables(DMemSize size);
+        case (size)
+            DMEM_BYTE:          return unpack(4'b0001);
+            DMEM_HALFWORD:      return unpack(4'b0011);
+            DMEM_WORD:          return unpack(4'b1111);
+            default:            return unpack(4'b0000);
+        endcase
+    endfunction
+`elsif RV64
+    function Vector#(BYTESWORD, Bool) size2ByteEnables(DMemSize size);
+        case (size)
+            DMEM_BYTE:          return unpack(8'b00000001);
+            DMEM_HALFWORD:      return unpack(8'b00000011);
+            DMEM_WORD:          return unpack(8'b00001111);
+            DMEM_DOUBLEWORD:    return unpack(8'b11111111);
+        endcase
+    endfunction
+`endif
 
-                // Check if the instruction address is aligned and within memory
-                if (addr[1:0] != 0 || addr >= `IMEM_SIZE)
-                    is_imem_req_valid <= False;
-                else begin
-                    ibram.portA.request.put(BRAMRequest {
-                        write :             False,
-                        responseOnWrite :   False,
-                        address :           truncate(addr >> byte_sel_instr),
-                        datain :            ?
-                    });
-                    is_imem_req_valid <= True;
+    interface Put request;
+        method Action put(DMemReq req);
+
+            // Check if the data address is within memory
+            if (req.addr + (1 << pack(req.size)) - 1 >= `DMEM_SIZE)
+                is_dmem_req_valid <= False;
+
+            else begin 
+                // Store the request made so that the right BRAM banks are 
+                // probed for response
+                last_dmem_req <= req;
+
+                // Decompose a data memory request into one or more byte accesses
+                Vector#(BYTESWORD, Byte) req_vec = unpack(pack(req.write_data));
+                Vector#(BYTESWORD, Bool) byte_enable = size2ByteEnables(req.size);
+                
+                for (Integer i = 0; i < bytes_in_word; i = i + 1) begin
+                    // Pick the appropriate BRAM bank 
+                    Addr byte_addr = req.addr + fromInteger(i);
+                    ByteSel byte_offset = truncate(byte_addr);
+                    dbram[byte_offset].portA.request.put(
+                        BRAMRequest {
+                            write:              req.mem_op == WRITE && byte_enable[i],
+                            responseOnWrite:    True,
+                            address:            truncate(byte_addr >> byte_sel_word),
+                            datain:             req_vec[i]
+                        });
                 end
-            endmethod
-        endinterface
-
-        interface Get response;
-            method ActionValue#(IMemResp) get();
-
-                if (is_imem_req_valid) begin
-                    Instr resp <- ibram.portA.response.get();
-                    return tagged Mem_Resp_Ok resp;
-                end
-                else
-                    return tagged Mem_Resp_Exception EXC_INSTR_ACCESS_FAULT;
-
-            endmethod
-        endinterface
-
+                is_dmem_req_valid <= True;
+            end
+        endmethod
     endinterface
 
 
-    // ------------------------------------------------------------------------
-    // Data memory interface implementation
-    // ------------------------------------------------------------------------
-    interface Server dmem;
+    interface Get response;
+         method ActionValue#(DMemResp) get();
 
-`ifdef RV32
-        // Convert the data memory request size (e.g. HALFWORD) into byte enable 
-        //signals
-        function Vector#(BYTESWORD, Bool) size2ByteEnables(DMemSize size);
-            case (size)
-                DMEM_BYTE:          return unpack(4'b0001);
-                DMEM_HALFWORD:      return unpack(4'b0011);
-                DMEM_WORD:          return unpack(4'b1111);
-                default:            return unpack(4'b0000);
-            endcase
-        endfunction
-`elsif RV64
-        function Vector#(BYTESWORD, Bool) size2ByteEnables(DMemSize size);
-            case (size)
-                DMEM_BYTE:          return unpack(8'b00000001);
-                DMEM_HALFWORD:      return unpack(8'b00000011);
-                DMEM_WORD:          return unpack(8'b00001111);
-                DMEM_DOUBLEWORD:    return unpack(8'b11111111);
-            endcase
-        endfunction
-`endif
-
-        interface Put request;
-            method Action put(DMemReq req);
-
-                // Check if the data address is within memory
-                if (req.addr + (1 << pack(req.size)) - 1 >= `DMEM_SIZE)
-                    is_dmem_req_valid <= False;
-
-                else begin 
-                    // Store the request made so that the right BRAM banks are 
-                    // probed for response
-                    last_dmem_req <= req;
-
-                    // Decompose a data memory request into one or more byte accesses
-                    Vector#(BYTESWORD, Byte) req_vec = unpack(pack(req.write_data));
-                    Vector#(BYTESWORD, Bool) byte_enable = size2ByteEnables(req.size);
-                    
-                    for (Integer i = 0; i < bytes_in_word; i = i + 1) begin
-                        // Pick the appropriate BRAM bank 
-                        Addr byte_addr = req.addr + fromInteger(i);
-                        ByteSel byte_offset = truncate(byte_addr);
-                        dbram[byte_offset].portA.request.put(
-                            BRAMRequest {
-                                write:              req.mem_op == WRITE && byte_enable[i],
-                                responseOnWrite:    True,
-                                address:            truncate(byte_addr >> byte_sel_word),
-                                datain:             req_vec[i]
-                            });
-                    end
-                    is_dmem_req_valid <= True;
+            if (is_dmem_req_valid) begin
+                // Combine responses from BRAM banks into a single word
+                Vector#(BYTESWORD, Byte) resp_vec;
+                Vector#(BYTESWORD, Bool) byte_enable = size2ByteEnables(
+                    last_dmem_req.size);
+                
+                for (Integer i = 0; i < bytes_in_word; i = i + 1) begin
+                    // Pick the appropriate BRAM bank 
+                    Addr byte_addr = last_dmem_req.addr + fromInteger(i);
+                    ByteSel byte_offset = truncate(byte_addr);
+                    resp_vec[i] <- dbram[byte_offset].portA.response.get();
                 end
-            endmethod
-        endinterface
-
-
-        interface Get response;
-             method ActionValue#(DMemResp) get();
-
-                if (is_dmem_req_valid) begin
-                    // Combine responses from BRAM banks into a single word
-                    Vector#(BYTESWORD, Byte) resp_vec;
-                    Vector#(BYTESWORD, Bool) byte_enable = size2ByteEnables(
-                        last_dmem_req.size);
-                    
-                    for (Integer i = 0; i < bytes_in_word; i = i + 1) begin
-                        // Pick the appropriate BRAM bank 
-                        Addr byte_addr = last_dmem_req.addr + fromInteger(i);
-                        ByteSel byte_offset = truncate(byte_addr);
-                        resp_vec[i] <- dbram[byte_offset].portA.response.get();
-                    end
-                    return tagged Mem_Resp_Ok unpack(pack(resp_vec));
-                end
-                else
-                    return tagged Mem_Resp_Exception EXC_DATA_ACCESS_FAULT;
-
-            endmethod
-        endinterface
-
+                return tagged Mem_Resp_Ok unpack(pack(resp_vec));
+            end
+            else
+                return tagged Mem_Resp_Exception EXC_DATA_ACCESS_FAULT;
+        endmethod
     endinterface
 
 endmodule
